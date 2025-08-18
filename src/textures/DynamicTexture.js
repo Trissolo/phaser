@@ -887,15 +887,7 @@ var DynamicTexture = new Class({
         }
         else if (config.transform === 'world' && entry.parentContainer)
         {
-            parentTransform = new TransformMatrix();
-            var tempMatrix = new TransformMatrix();
-            var parent = entry.parentContainer;
-            while (parent)
-            {
-                tempMatrix.applyITRS(parent.x, parent.y, parent.rotation, parent.scaleX, parent.scaleY);
-                parentTransform.multiply(tempMatrix);
-                parent = parent.parentContainer;
-            }
+            parentTransform = entry.parentContainer.getWorldTransformMatrix();
         }
         if (parentTransform)
         {
