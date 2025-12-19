@@ -220,7 +220,7 @@ var Mask = new Class({
         }
         else if (this._dynamicTexture.width !== scaledWidth || this._dynamicTexture.height !== scaledHeight)
         {
-            this._dynamicTexture.setSize(scaledWidth, scaledHeight);
+            this._dynamicTexture.setSize(scaledWidth, scaledHeight, false);
         }
         else
         {
