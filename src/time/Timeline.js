@@ -388,8 +388,20 @@ var Timeline = new Class({
             }
         }
 
-        //  It may be greater than the length if events have been removed
-        if (this.totalComplete >= events.length)
+        //  Count the number of incomplete events
+        var incompleteCount = 0;
+        for (i = 0; i < events.length; i++)
+        {
+            if (!events[i].complete)
+            {
+                incompleteCount++;
+            }
+        }
+
+        //  Timeline is complete when there are no incomplete events remaining
+        //  This can happen when all events are complete (and not removed),
+        //  or when all once events have been removed (events.length === 0 but totalComplete > 0)
+        if (incompleteCount === 0 && (events.length > 0 || this.totalComplete > 0))
         {
             if (this.loop !== 0 && (this.loop === -1 || this.loop > this.iteration))
             {
