@@ -18,13 +18,13 @@ Interested in learning more? Click the image below to watch our intro video.
 
 ## v4 Release Candidate 5
 
-You are looking at Release Candidate 5 of Phaser v4. There are large internal differences between Phaser v3 and v4, although the public API has remained mostly, but not entirely, the same.
+You are looking at Release Candidate 6 of Phaser v4. There are large internal differences between Phaser v3 and v4, although the public API has remained mostly, but not entirely, the same.
 
-Please only use this release if you wish to help test Phaser v4.
+Please only use this release if you wish to help test Phaser 4.
 
-Phaser v4 contains our brand-new and highly efficient WebGL renderer. The entire renderer from v3 has been replaced.
+Phaser 4 contains our brand-new and highly efficient WebGL renderer. The entire renderer from v3 has been replaced.
 
-We also took this opportunity to make other Quality-of-Life updates internally, which you can find detailed in [this change log](changelog/4.0/CHANGELOG-v4.0.0.md).
+We also took this opportunity to make other Quality-of-Life updates internally, which you can find detailed in [this Change Log](changelog/4.0/CHANGELOG-v4.0.0.md).
 
 ## Installing Phaser 4 Beta from NPM
 
@@ -68,7 +68,7 @@ Cheers,
 
 Powered by coffee, anime, pixels and love.
 
-The Phaser logo and characters are &copy; 2011 - 2025 Phaser Studio Inc.
+The Phaser logo and characters are &copy; 2011 - 2026 Phaser Studio Inc.
 
 All rights reserved.
 
