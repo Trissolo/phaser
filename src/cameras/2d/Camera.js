@@ -28,6 +28,11 @@ var Vector2 = require('../../math/Vector2');
  * created the same size as your game, but their position and size can be set to anything. This means if you
  * wanted to create a camera that was 320x200 in size, positioned in the bottom-right corner of your game,
  * you'd adjust the viewport to do that (using methods like `setViewport` and `setSize`).
+ * However, the viewport is limited to being an axis-aligned rectangle, and cannot be rotated.
+ * It is more powerful and reliable to use a
+ * `RenderTexture` or `DynamicTexture` instead.
+ * Point its camera where you want the viewport,
+ * set its size, and then draw your game objects to it.
  *
  * If you wish to change where the Camera is looking in your game, then you scroll it. You can do this
  * via the properties `scrollX` and `scrollY` or the method `setScroll`. Scrolling has no impact on the

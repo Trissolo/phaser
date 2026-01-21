@@ -560,7 +560,7 @@ var BaseCamera = new Class({
 
         /**
          * Can this Camera render rounded pixel values?
-         * 
+         *
          * This property is updated during the `preRender` method and should not be
          * set directly. It is set based on the `roundPixels` property of the Camera
          * combined with the zoom level. If the zoom is an integer then the WebGL
@@ -1363,6 +1363,16 @@ var BaseCamera = new Class({
      * By default a Camera is the same size as the game, but can be made smaller via this method,
      * allowing you to create mini-cam style effects by creating and positioning a smaller Camera
      * viewport within your game.
+     *
+     * Note that this is a limited method, and comes with several caveats:
+     *
+     * - The viewport is an axis-aligned rectangle, and cannot be rotated.
+     * - Filters and masks may appear in the wrong place if the viewport changes.
+     *
+     * It is more powerful and reliable to use a
+     * `RenderTexture` or `DynamicTexture` instead.
+     * Point its camera where you want the viewport,
+     * set its size, and then draw your game objects to it.
      *
      * @method Phaser.Cameras.Scene2D.BaseCamera#setViewport
      * @since 3.0.0
