@@ -44,6 +44,12 @@
   - Smoothly animate scroll through the XY plane or evolve the pattern through Z or ZW axes.
   - Add octaves of detail.
   - Supports rendering as a texture or normal map for use in other effects.
+- Simplex noise objects: `GameObjects.NoiseSimplex2D` and `NoiseSimplex3D` provide simplex noise.
+  - Render simplex noise, the successor to Perlin Noise.
+  - Use gradient flow to smoothly loop noise animation.
+  - Add octaves of detail.
+  - Apply turbulence and output shaping for a variety of effects.
+  - Supports rendering as a texture or normal map for use in other effects.
 - `Tint` is overhauled.
   - `tint` and `setTint()` now purely affect the color settings.
     - Previously, both would silently deactivate fill mode.

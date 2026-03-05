@@ -135,6 +135,8 @@ if (typeof WEBGL_RENDERER)
     GameObjects.NoiseCell2D = require('./noise/noisecell2d/NoiseCell2D');
     GameObjects.NoiseCell3D = require('./noise/noisecell3d/NoiseCell3D');
     GameObjects.NoiseCell4D = require('./noise/noisecell4d/NoiseCell4D');
+    GameObjects.NoiseSimplex2D = require('./noise/noisesimplex2d/NoiseSimplex2D');
+    GameObjects.NoiseSimplex3D = require('./noise/noisesimplex3d/NoiseSimplex3D');
     GameObjects.Shader = require('./shader/Shader');
     GameObjects.NineSlice = require('./nineslice/NineSlice');
     GameObjects.PointLight = require('./pointlight/PointLight');
@@ -146,6 +148,8 @@ if (typeof WEBGL_RENDERER)
     GameObjects.Factories.NoiseCell2D = require('./noise/noisecell2d/NoiseCell2DFactory');
     GameObjects.Factories.NoiseCell3D = require('./noise/noisecell3d/NoiseCell3DFactory');
     GameObjects.Factories.NoiseCell4D = require('./noise/noisecell4d/NoiseCell4DFactory');
+    GameObjects.Factories.NoiseSimplex2D = require('./noise/noisesimplex2d/NoiseSimplex2DFactory');
+    GameObjects.Factories.NoiseSimplex3D = require('./noise/noisesimplex3d/NoiseSimplex3DFactory');
     GameObjects.Factories.Shader = require('./shader/ShaderFactory');
     GameObjects.Factories.NineSlice = require('./nineslice/NineSliceFactory');
     GameObjects.Factories.PointLight = require('./pointlight/PointLightFactory');
@@ -157,6 +161,8 @@ if (typeof WEBGL_RENDERER)
     GameObjects.Creators.NoiseCell2D = require('./noise/noisecell2d/NoiseCell2DCreator');
     GameObjects.Creators.NoiseCell3D = require('./noise/noisecell3d/NoiseCell3DCreator');
     GameObjects.Creators.NoiseCell4D = require('./noise/noisecell4d/NoiseCell4DCreator');
+    GameObjects.Creators.NoiseSimplex2D = require('./noise/noisesimplex2d/NoiseSimplex2DCreator');
+    GameObjects.Creators.NoiseSimplex3D = require('./noise/noisesimplex3d/NoiseSimplex3DCreator');
     GameObjects.Creators.Shader = require('./shader/ShaderCreator');
     GameObjects.Creators.NineSlice = require('./nineslice/NineSliceCreator');
     GameObjects.Creators.PointLight = require('./pointlight/PointLightCreator');

@@ -1,0 +1,486 @@
+/**
+ * @author       Benjamin D. Richards <benjamindrichards@gmail.com>
+ * @copyright    2013-2026 Phaser Studio Inc.
+ * @license      {@link https://opensource.org/licenses/MIT|MIT License}
+*/
+
+var Class = require('../../../utils/Class');
+var Shader = require('../../shader/Shader');
+var Color = require('../../../display/color/Color');
+var NoiseSimplex2DFrag = require('../../../renderer/webgl/shaders/NoiseSimplex2D-frag');
+
+/**
+ * @classdesc
+ * A NoiseSimplex2D object.
+ *
+ * This game object is a quad which displays cellular noise.
+ * You can manipulate this object like any other, make it interactive,
+ * and use it in filters and masks to create visually stunning effects.
+ *
+ * Behind the scenes, a NoiseSimplex2D is a {@see Phaser.GameObjects.Shader}
+ * using a specific shader program.
+ *
+ * Simplex noise is a smooth pattern ideal for soft, natural phenomena.
+ * It is useful for clouds, flame, water, and many other effects.
+ * Ken Perlin, the creator of Perlin Noise, created Simplex Noise
+ * to improve performance and quality over the original.
+ *
+ * By default, the noise pattern is periodic: it repeats.
+ * You can scroll in X and Y.
+ * You can also change the `noiseFlow` value to evolve the pattern
+ * along a periodic course.
+ *
+ * You can set the cell count, color and transparency of the pattern.
+ * You can add fine detail with `noiseIterations`.
+ * You can add turbulence with `noiseWarpAmount`.
+ *
+ * You can set `noiseNormalMap` to output a normal map.
+ * This is a quick way to add texture for lighting.
+ *
+ * For advanced users, you can configure the characteristics of octave iteration.
+ * Use `noiseDetailPower`, `noiseFlowPower`, and `noiseContributionPower`
+ * to adjust the exponential scaling rate of these values.
+ * Use `noiseWarpDetailPower`, `noiseWarpFlowPower`, and
+ * `noiseWarpContributionPower` to do the same for the warp effect.
+ *
+ * @class NoiseSimplex2D
+ * @extends Phaser.GameObjects.Shader
+ * @memberof Phaser.GameObjects
+ * @since 4.0.0
+ * @constructor
+ *
+ * @param {Phaser.Scene} scene - The Scene to which this Game Object belongs.
+ * @param {Phaser.Types.GameObjects.NoiseSimplex2D.NoiseSimplex2DQuadConfig} [config] - The configuration for this Game Object.
+ * @param {number} [x=0] - The horizontal position of this Game Object in the world.
+ * @param {number} [y=0] - The vertical position of this Game Object in the world.
+ * @param {number} [width=128] - The width of the Game Object.
+ * @param {number} [height=128] - The height of the Game Object.
+ */
+var NoiseSimplex2D = new Class({
+    Extends: Shader,
+
+    initialize: function NoiseSimplex2D (scene, config, x, y, width, height)
+    {
+        if (!config) { config = {}; }
+
+        var shaderConfig = {
+            name: 'noiseSimplex2D',
+            fragmentSource: NoiseSimplex2DFrag,
+            shaderAdditions: [
+                {
+                    name: 'ITERATION_COUNT_1',
+                    tags: [ 'ITERATION_COUNT' ],
+                    additions: {
+                        fragmentIterations: '#define ITERATION_COUNT 1.0\n#define WARP_ITERATION_COUNT 1.0'
+                    }
+                },
+                {
+                    name: 'NORMALMAP',
+                    tags: [ 'NORMALMAP' ],
+                    additions: {
+                        fragmentNormalMap: '#define NORMAL_MAP\n#extension GL_OES_standard_derivatives : enable'
+                    },
+                    disable: !config.noiseNormalMap
+                }
+            ],
+            setupUniforms: this._setupUniforms,
+            updateShaderConfig: this._updateShaderConfig
+        };
+
+        Shader.call(this, scene, shaderConfig, x, y, width, height);
+
+        this.type = 'NoiseSimplex2D';
+
+        /**
+         * The number of cells in each dimension.
+         *
+         * This must be an array of 2 numbers.
+         *
+         * Try to keep the cell count between 2
+         * and about an eighth of the resolution of the texture.
+         * A cell count greater than the resolution of the texture
+         * will essentially be expensive white noise.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseCells
+         * @type {number[]}
+         * @default [ 32, 32 ]
+         * @since 4.0.0
+         */
+        this.noiseCells = config.noiseCells || [ 32, 32 ];
+
+        /**
+         * The number of cells before the pattern wraps.
+         *
+         * This must be an array of 2 numbers.
+         *
+         * By default, this is the same as `noiseCells`.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noisePeriod
+         * @type {number[]}
+         * @default [ 32, 32 ]
+         * @since 4.0.0
+         */
+        this.noisePeriod = [
+            this.noiseCells[0],
+            this.noiseCells[1]
+        ];
+        if (config.noisePeriod)
+        {
+            this.noisePeriod = config.noisePeriod;
+        }
+
+        /**
+         * The offset of the noise in each dimension: [ x, y ].
+         * Animate x and y to scroll the noise pattern.
+         *
+         * This must be an array of 2 numbers.
+         *
+         * @example
+         * // Scroll the noise pattern without changing the pattern.
+         * noise.noiseOffset[0] = Math.sin(scene.time.now / 10000);
+         * noise.noiseOffset[1] = Math.cos(scene.time.now / 10000);
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseOffset
+         * @type {number[]}
+         * @default [ 0, 0 ]
+         * @since 4.0.0
+         */
+        this.noiseOffset = [ 0, 0 ];
+        if (config.noiseOffset)
+        {
+            this.noiseOffset = config.noiseOffset;
+        }
+
+        /**
+         * The current flow of the noise field.
+         * The pattern changes in place with flow.
+         * This is a rotation, so the pattern returns to its original state
+         * after flow increases by PI * 2.
+         *
+         * Use flow to evolve the pattern over time with periodic repeats.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseFlow
+         * @type {number}
+         * @default 0
+         * @since 4.0.0
+         */
+        this.noiseFlow = config.noiseFlow || 0;
+
+        /**
+         * How much to warp the noise texture.
+         * Warp can add a sense of turbulence to the output.
+         *
+         * This runs several octaves of noise to generate a random warp offset.
+         * It adds to the expense of the shader.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseFlowPower
+         * @type {number}
+         * @default 0
+         * @since 4.0.0
+         */
+        this.noiseWarpAmount = config.noiseWarpAmount || 0;
+
+        /**
+         * How many octaves of noise to apply.
+         * This adds fine detail to the noise, at the cost of performance.
+         *
+         * This value should be an integer of 1 or higher.
+         * Values above 5 or so have increasingly little effect.
+         * Each iteration has a cost, so only use as much as you need!
+         *
+         * Use `noiseDetailPower`, `noiseFlowPower` and `noiseContributionPower`
+         * to configure differences between octaves.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseIterations
+         * @type {number}
+         * @default 1
+         * @since 4.0.0
+         */
+        this.noiseIterations = config.noiseIterations || 1;
+
+        /**
+         * How many octaves of noise to apply when warping the noise.
+         *
+         * This behaves much like `noiseIterations`,
+         * but is used in the warp calculations instead.
+         * It is only used when `noiseWarpAmount` is not 0.
+         * You may need fewer warp iterations than regular iterations.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseWarpIterations
+         * @type {number}
+         * @default 1
+         * @since 4.0.0
+         */
+        this.noiseWarpIterations = config.noiseWarpIterations || 1;
+
+        /**
+         * How much to increase detail frequency between noise octaves.
+         *
+         * This is used as the base of an exponent.
+         * The default 2 doubles the frequency every octave.
+         * Lower values scale slower.
+         * Higher values scale higher.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseDetailPower
+         * @type {number}
+         * @default 2
+         * @since 4.0.0
+         */
+        this.noiseDetailPower = config.noiseDetailPower || 2;
+
+        /**
+         * How much to increase flow progression between noise octaves.
+         *
+         * This is used as the base of an exponent.
+         * The default 2 doubles the frequency every octave.
+         * Lower values scale slower.
+         * Higher values scale higher.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseFlowPower
+         * @type {number}
+         * @default 2
+         * @since 4.0.0
+         */
+        this.noiseFlowPower = config.noiseFlowPower || 2;
+
+        /**
+         * How much value to take from subsequent noise octaves.
+         *
+         * This is used as the base of an exponent.
+         * The default 2 halves the contribution every octave.
+         * Lower values decay slower, prioritize high frequency detail.
+         * Higher values decay faster, prioritize low frequency detail.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseFlowPower
+         * @type {number}
+         * @default 2
+         * @since 4.0.0
+         */
+        this.noiseContributionPower = config.noiseContributionPower || 2;
+
+        /**
+         * How much to increase detail frequency between noise octaves
+         * in the warp.
+         *
+         * This is used as the base of an exponent.
+         * The default 2 doubles the frequency every octave.
+         * Lower values scale slower.
+         * Higher values scale higher.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseWarpDetailPower
+         * @type {number}
+         * @default 2
+         * @since 4.0.0
+         */
+        this.noiseWarpDetailPower = config.noiseWarpDetailPower || 2;
+
+        /**
+         * How much to increase flow progression between noise octaves
+         * in the warp.
+         *
+         * This is used as the base of an exponent.
+         * The default 2 doubles the frequency every octave.
+         * Lower values scale slower.
+         * Higher values scale higher.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseWarpFlowPower
+         * @type {number}
+         * @default 2
+         * @since 4.0.0
+         */
+        this.noiseWarpFlowPower = config.noiseWarpFlowPower || 2;
+
+        /**
+         * How much value to take from subsequent noise octaves
+         * in the warp.
+         *
+         * This is used as the base of an exponent.
+         * The default 2 halves the contribution every octave.
+         * Lower values decay slower, prioritize high frequency detail.
+         * Higher values decay faster, prioritize low frequency detail.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseFlowPower
+         * @type {number}
+         * @default 2
+         * @since 4.0.0
+         */
+        this.noiseWarpContributionPower = config.noiseWarpContributionPower || 2;
+
+        /**
+         * Whether to convert the noise output to a normal map.
+         *
+         * Control the curvature strength with `noiseNormalScale`.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseNormalMap
+         * @type {boolean}
+         * @default false
+         * @since 4.0.0
+         */
+        this.noiseNormalMap = !!config.noiseNormalMap;
+
+        /**
+         * Curvature strength of normal map output.
+         * This is used when `noiseNormalMap` is enabled.
+         *
+         * The default is 1. Higher values produce more curvature;
+         * lower values are flatter.
+         *
+         * Surface angle is determined by the rate of change of the noise.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseNormalScale
+         * @type {number}
+         * @default 1
+         * @since 4.0.0
+         */
+        this.noiseNormalScale = 1;
+        if (config.noiseNormalScale !== undefined)
+        {
+            this.noiseNormalScale = config.noiseNormalScale;
+        }
+
+        /**
+         * Factor applied to the raw noise output.
+         *
+         * Raw noise is emitted in the range -1 to 1.
+         * It is adjusted by (rawNoise * noiseValueFactor + noiseValueAdd) ^ noiseValuePower.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseValueFactor
+         * @type {number}
+         * @default 0.5
+         * @since 4.0.0
+         */
+        this.noiseValueFactor = config.noiseValueFactor === undefined ? 0.5 : config.noiseValueFactor;
+
+        /**
+         * Value added to the raw noise output.
+         *
+         * Raw noise is emitted in the range -1 to 1.
+         * It is adjusted by (rawNoise * noiseValueFactor + noiseValueAdd) ^ noiseValuePower.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseValueAdd
+         * @type {number}
+         * @default 0.5
+         * @since 4.0.0
+         */
+        this.noiseValueAdd = config.noiseValueAdd === undefined ? 0.5 : config.noiseValueAdd;
+
+        /**
+         * Exponent applied to the raw noise output.
+         *
+         * Raw noise is emitted in the range -1 to 1.
+         * It is adjusted by (rawNoise * noiseValueFactor + noiseValueAdd) ^ noiseValuePower.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseValuePower
+         * @type {number}
+         * @default 1
+         * @since 4.0.0
+         */
+        this.noiseValuePower = config.noiseValuePower === undefined ? 1 : config.noiseValuePower;
+
+        /**
+         * The color when the adjusted noise value is 0.
+         * This blends with noiseColorEnd.
+         *
+         * The default is black. You can set any color, and change the alpha.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseColorStart
+         * @type {Phaser.Display.Color}
+         * @since 4.0.0
+         */
+        this.noiseColorStart = new Color(0, 0, 0);
+
+        /**
+         * The color when the adjusted noise value is 1.
+         * This blends with noiseColorStart.
+         *
+         * The default is white. You can set any color, and change the alpha.
+         *
+         * @name Phaser.GameObjects.NoiseSimplex2D#noiseColorEnd
+         * @type {Phaser.Display.Color}
+         * @since 4.0.0
+         */
+        this.noiseColorEnd = new Color(255, 255, 255);
+
+        if (config.noiseColorStart !== undefined || config.noiseColorEnd !== undefined)
+        {
+            this.setNoiseColor(config.noiseColorStart, config.noiseColorEnd);
+        }
+    },
+
+    /**
+     * Set the noise texture to wrap seamlessly.
+     *
+     * This sets `noisePeriod` to equal `noiseCells` in all dimensions.
+     *
+     * @method Phaser.GameObjects.NoiseSimplex2D#wrapNoise
+     * @since 4.0.0
+     * @returns {this} This game object.
+     */
+    wrapNoise: function ()
+    {
+        var len = this.noisePeriod.length;
+        for (var i = 0; i < len; i++)
+        {
+            this.noisePeriod[i] = this.noiseCells[i];
+        }
+        return this;
+    },
+
+    /**
+     * The function which sets uniforms for the shader.
+     * This is provided to the Shader base class as `setupUniforms`.
+     * You should not override `setupUniforms` on this object.
+     *
+     * @method Phaser.GameObjects.NoiseSimplex2D#_setupUniforms
+     * @private
+     * @since 4.0.0
+     * @param {function} setUniform - The function which sets uniforms. `(name: string, value: any) => void`.
+     * @param {Phaser.Renderer.WebGL.DrawingContext} drawingContext - A reference to the current drawing context.
+     */
+    _setupUniforms: function (setUniform)
+    {
+        setUniform('uCells', this.noiseCells);
+        setUniform('uPeriod', this.noisePeriod);
+        setUniform('uOffset', this.noiseOffset);
+        setUniform('uFlow', this.noiseFlow);
+        setUniform('uDetailPower', this.noiseDetailPower);
+        setUniform('uFlowPower', this.noiseFlowPower);
+        setUniform('uContributionPower', this.noiseContributionPower);
+        setUniform('uWarpDetailPower', this.noiseWarpDetailPower);
+        setUniform('uWarpFlowPower', this.noiseWarpFlowPower);
+        setUniform('uWarpContributionPower', this.noiseWarpContributionPower);
+        setUniform('uWarpAmount', this.noiseWarpAmount);
+        setUniform('uNormalScale', this.noiseNormalScale);
+        setUniform('uValueFactor', this.noiseValueFactor);
+        setUniform('uValueAdd', this.noiseValueAdd);
+        setUniform('uValuePower', this.noiseValuePower);
+        setUniform('uColorStart', this.noiseColorStart.gl);
+        setUniform('uColorEnd', this.noiseColorEnd.gl);
+    },
+
+    /**
+     * The function which updates shader configuration.
+     * This is provided to the Shader base class as `updateShaderConfig`.
+     * You should not override `updateShaderConfig` on this object.
+     *
+     * @method Phaser.GameObjects.NoiseSimplex2D#_updateShaderConfig
+     * @private
+     * @since 4.0.0
+     * @param {Phaser.Renderer.WebGL.DrawingContext} drawingContext - A reference to the current drawing context.
+     * @param {Phaser.GameObjects.Gradient} gameObject - The game object which is rendering.
+     * @param {Phaser.Renderer.WebGL.RenderNodes.ShaderQuad} renderNode - The render node currently rendering.
+     */
+    _updateShaderConfig: function (drawingContext, gameObject, renderNode)
+    {
+        var iterations = Math.max(1, Math.floor(gameObject.noiseIterations));
+        var warpIterations = Math.max(1, Math.floor(gameObject.noiseWarpIterations));
+        var iterationAdd = renderNode.programManager.getAdditionsByTag('ITERATION_COUNT')[0];
+        iterationAdd.name = 'ITERATION_COUNT_' + iterations;
+        iterationAdd.additions.fragmentIterations = '#define ITERATION_COUNT ' + iterations + '.0' + '\n' + '#define WARP_ITERATION_COUNT ' + warpIterations + '.0';
+
+        var normalAdd = renderNode.programManager.getAdditionsByTag('NORMALMAP')[0];
+        normalAdd.disable = !gameObject.noiseNormalMap;
+    }
+});
+
+module.exports = NoiseSimplex2D;
