@@ -78,7 +78,6 @@ var worley = function (vector, config, scale)
 
     // Normalize vector to unit grid.
     var axes = Math.max(1, Math.min(vector.length, 4));
-    var a3 = axes * 3;
     var cells = config.noiseCells || [ 32, 32, 32, 32 ].slice(0, axes);
     for (i = 0; i < axes; i++)
     {
@@ -99,16 +98,16 @@ var worley = function (vector, config, scale)
     for (index = 0; index < neighbors; index++)
     {
         // Generate neighbourhood in range -1,1 on relevant axes.
-        neighbor[0] = index % a3 - 1;
+        neighbor[0] = index % axes - 1;
         if (axes > 1)
         {
-            neighbor[1] = Math.floor(index / 3) % a3 - 1;
+            neighbor[1] = Math.floor(index / 3) % axes - 1;
             if (axes > 2)
             {
-                neighbor[2] = Math.floor(index / 9) % a3 - 1;
+                neighbor[2] = Math.floor(index / 9) % axes - 1;
                 if (axes > 3)
                 {
-                    neighbor[3] = Math.floor(index / 27) % a3 - 1;
+                    neighbor[3] = Math.floor(index / 27) % axes - 1;
                 }
             }
         }
