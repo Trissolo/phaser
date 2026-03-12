@@ -8,7 +8,7 @@ Phaser 4 updates the WebGL rendering system to become more powerful and reliable
 
 ## 1. Rendering Concepts
 
-The Phaser 4 WebGL renderer "Beam" is a complete rewrite from Phaser 3. It concentrates on encapsulated drawing, where rendering operations will work anywhere in the system.
+The Phaser 4 WebGL renderer is a complete rewrite from Phaser 3. It concentrates on encapsulated drawing, where rendering operations will work anywhere in the system.
 
 The following concepts are relevant:
 
@@ -20,12 +20,20 @@ The following concepts are relevant:
 
 ### WebGL State Management
 
-Beam completely abstracts WebGL calls. You should never need to access the `gl` object.
+Phaser 4 completely abstracts WebGL calls. You should never need to access the `gl` object.
 
-If you somehow need to access the internal WebGL state, never call `gl.someFunction()`. Instead, use the Beam wrappers, including:
+If you somehow need to access the internal WebGL state, never call `gl.someFunction()`. Instead, use the Phaser wrappers, including:
 
 - `Phaser.Renderer.WebGL.Wrappers.WebGLGlobalWrapper`, instantiated at `game.renderer.glWrapper`. This object is a mirror of GL state, such as blend mode, current texture/shader/framebuffer bindings, scissor, texture premultiplication, etc.
+- `WebGLShaderSetterWrapper`, instantiated at `game.renderer.shaderSetters`. This object stores references to GL constants, data sizes, and shader uniform setter methods for internal use.
+- `WebGLTextureUnitsWrapper`, instantiated at `game.renderer.glTextureUnits`, manages texture unit allocation. This binds textures to texture units, allowing them to be accessed by shaders. This is handled automatically by the renderer.
 - Resource wrappers, such as `Phaser.Renderer.WebGL.Wrappers.WebGLTextureWrapper`. These objects are created to contain WebGL resources such as a `WebGLTexture`, along with information about their creation. These should be created using methods such as `game.renderer.createTextureFromSource` rather than the `new` constructor.
+  - `WebGLBufferWrapper` manages a data buffer, used by vertex shaders. There are two kinds, index and vertex. Index buffers store a sequence of vertices, allowing vertex reuse for greater efficiency; they are created by `game.renderer.createIndexBuffer()`. Vertex buffers store actual data about the vertex, such as position, tint, and texture coordinates; they are created by `game.renderer.createVertexBuffer()`.
+  - `WebGLFrameBufferWrapper` manages a framebuffer, a texture that acts as a render target. Framebuffers are created as part of DrawingContext objects (see below).
+  - `WebGLProgramWrapper` manages a shader program, the compiled combination of a vertex shader and a fragment shader. Shader programs are managed by ProgramManager instances within render nodes; a ProgramManager may hold several wrappers, each containing a variant program.
+  - `WebGLTextureWrapper` manages a texture. Texture wrappers are created automatically with Texture objects. You can create them using `game.renderer.createTextureFromSource()`.
+  - `WebGLVAOWrapper` manages a Vertex Array Object (VAO), which remembers the attribute layout for a vertex buffer so we don't have to constantly re-apply settings. These are created automatically by ProgramManager instances.
+  - `WebGLVertexBufferLayoutWrapper` manages a vertex buffer wrapper and the data types stored within it. This is actually created as `new WebGLVertexBufferLayoutWrapper(...)`. It is used by render nodes which compose vertex buffers for rendering.
 
 These wrappers let us track the state between functions, and recreate it if the WebGL rendering context is lost.
 
@@ -45,13 +53,13 @@ DrawingContext is _nestable_: you can create a new DrawingContext, use it for dr
 
 When handling a DrawingContext, you must call `drawingContext.use()` and `drawingContext.release()` at the start and end of its use. These run necessary code, such as clearing the context if it is scheduled for reuse, and starting new batch renders. Because a fresh DrawingContext has different drawing rules, it must notify existing batch renders that they should finish up before it goes into effect.
 
-A DrawingContext can hold a framebuffer, in which case `drawingContext.texture` will refer to a texture. Everything drawn using the DrawingContext is drawn to this texture. For persistent resources like DynamicTexture, the texture is permanently retained. For temporary resources such as Filters, it is cleared after being drawn out.
+A DrawingContext can hold a framebuffer, in which case `drawingContext.texture` will refer to a texture. Everything drawn using the DrawingContext is drawn to this texture. For persistent resources like DynamicTexture, the texture is permanently retained. For temporary resources such as Filters, it will be cleared before its next use.
 
 ### Batched Rendering
 
 Batching is handled automatically, but it is useful to understand it to ensure your games perform well.
 
-The most basic way of drawing is a "Stand Alone Render" (SAR). This makes one draw call per object. Unfortunately, draw calls are quite expensive.
+The most basic way of drawing is a "Stand Alone Render" (SAR). This makes one draw call per object. Unfortunately, draw calls are quite expensive. The cost varies by device and content, but typically you shouldn't exceed a few hundred draw calls per frame.
 
 Phaser automatically batches common objects which can be combined into a single draw call. Most objects are "quads", which use the same shader and set of textures, so they batch together. This is far more efficient, and you should try to have large batches wherever possible for good performance.
 
@@ -88,19 +96,19 @@ A node which provides batch functionality is invoked with `node.batch()` instead
 
 Nodes can call other nodes. This network forms the "render tree". You can see the render tree by running `game.renderer.renderNodes.setDebug(true)` to capture a frame, then `game.renderer.renderNodes.debugToString()` to get a formatted string describing which render nodes ran in your game.
 
-> The idea of Render Nodes is to allow a flexible approach to rendering tasks. For performance reasons, the default Beam nodes do a small number of large jobs. However, it's quite possible to break this down into a larger number of smaller, more customizable jobs.
+> The idea of Render Nodes is to allow a flexible approach to rendering tasks. For performance reasons, the default nodes do a small number of large jobs. However, it's quite possible to break this down into a larger number of smaller, more customizable jobs.
 
 ### Unified Draw Commands
 
-Beam uses a unified set of commands to draw with WebGL. These are relevant only if you are working with renderer internals.
+Phaser 4 uses a unified set of commands to draw with WebGL. These are relevant only if you are working with renderer internals.
 
-The `game.renderer.drawElements()` method is used for all current drawing operations in Beam. We also surface `game.renderer.drawInstancedArrays()` if this functionality is required. Both methods behave the same way.
+The `game.renderer.drawElements()` method is used for all current drawing operations in Phaser 4. We also surface `game.renderer.drawInstancedArrays()` if this functionality is required. Both methods behave the same way.
 
 WebGL state is only updated when a draw command is called. This prevents redundant or unnecessary calls from taking effect. You can update state manually in other circumstances, but this should rarely be necessary.
 
 ## 2. Sample Shader GameObject, Step By Step
 
-The Shader GameObject uses your custom shaders to draw a quad. It's similar to a Sprite, except instead of a texture, it renders whatever you want to the area covered by the object.
+The `Shader` GameObject uses your custom shaders to draw a quad. It's similar to a Sprite, except instead of a texture, it renders whatever you want to the area covered by the object.
 
 To master using Shader, consider the following areas.
 
@@ -108,6 +116,8 @@ To master using Shader, consider the following areas.
 - Authoring Shaders For Phaser
 - Loading Shaders in your Game
 - Creating Shader Objects
+
+> Shaders and shader programs: the Shader game object can be confused with a shader program, the compiled vertex and fragment shaders that render everything in WebGL. To avoid confusion, we always capitalize Shader when it refers to a game object, and leave it lowercase when it refers to a shader program.
 
 ### Shader Rendering
 
@@ -120,27 +130,27 @@ Shaders support custom vertex and fragment shaders. However, the default vertex 
 Consider the following areas:
 
 - Varyings
-- Templates
+- Additions
 
 #### Varyings
 
 The default vertex shader provides one input to the fragment shader: `varying vec2 outTexCoord`. This provides coordinates from 0-1 in X and Y, telling the fragment shader which part of the quad it's in.
 
-Note that Beam uses texture conventions where 0x0 is in the top-left of the texture. WebGL generally treats 0x0 as the bottom-left, so be aware of this convention. This shouldn't make a difference, as Beam also treats vertex coordinates as top-down.
+Note that Phaser 4 uses texture conventions where 0x0 is in the bottom-left of the texture. WebGL generally treats 0x0 as the bottom-left too, but other programs and shaders might not, so be aware of this convention. This shouldn't make a difference, as Phaser 4 treats vertex coordinates as top-down.
 
-#### Templates
+#### Additions
 
-If your shader does one thing, a single file works fine. But if you want to configure it at runtime, you should consider the Beam shader template system.
+If your shader does one thing, a single file works fine. But if you want to configure it at runtime, you should consider the Phaser 4 shader addition system.
 
 By using templating, you can split your GLSL code into multiple files, then combine them in various ways.
 
 Shader templating uses GLSL preprocessor commands to define insertion points in the code. This templating system allows you to write valid GLSL code, so your editor/IDE can give as much assistance as possible.
 
-Use `#pragma phaserTemplate(key)` to define an insertion point in your code. These points are replaced with any additions using that key, or with nothing if no additions use the key.
+Use `#pragma phaserTemplate(key)` to define an insertion point in your code. These points are replaced with all additions using that key, in the order they are defined, or with nothing if no additions use the key.
 
 The template key `#pragma phaserTemplate(shaderName)` will define `SHADER_NAME` to the shader name used in the game. This can be useful for debugging, but is not necessary.
 
-You can also define conditional code. Use `#define KEY` to define KEY, then use `#ifdef KEY`, `#else`, and `#endif` to check the state of a define. This is most useful when the define is added in a template.
+You can also define conditional code. Use `#define KEY` to define KEY, then use `#ifdef KEY` or `ifndef KEY`, `#else`, and `#endif` to check the state of a define. This is most useful when the define is added in an addition.
 
 A simple example:
 
@@ -158,7 +168,7 @@ float getNumber ()
 
 By default, this will return `2`. If you use a shader addition which adds `#define BIG_NUMBER` to `enableBigNumber`, the shader will instead return `10`.
 
-Other uses for templates:
+Other uses for additions:
 
 - Add optional code.
 - Reuse code across many shaders, to reduce the size of your game package, or help you manage a large codebase.
@@ -190,11 +200,11 @@ class Example extends Phaser.Scene
 
 This will add the specified file to the game's shader cache under the key `Marble`. You can use the key in later steps. You can retrieve the file data using `game.cache.shader.get('Marble')`. It is stored as a `Phaser.Display.BaseShader`. The property `baseShader.glsl` contains the code from the file.
 
-> In Phaser 3, there were "shader bundles" which contained several shaders along with metadata. In Beam, this is no longer valid; bundles will not be parsed into separate shaders.
+> In Phaser 3, there were "shader bundles" which contained several shaders along with metadata. In Phaser 4, this is no longer valid; bundles will not be parsed into separate shaders.
 >
 > If you want to load large amounts of shader code, use JSON, XML, or other supported formats.
 >
-> Phaser 3 also categorized shaders as either vertex or fragment, and combined them together as they loaded. Because Beam supports snippets that can be combined in many ways, this is no longer practical. A GLSL file is simply a single text file.
+> Phaser 3 also categorized shaders as either vertex or fragment, and combined them together as they loaded. Because Phaser 4 supports snippets that can be combined in many ways, this is no longer practical. A GLSL file is simply a single text file.
 
 #### Inline Strings
 
@@ -232,6 +242,7 @@ type ShaderQuadConfig =
     vertexSource: string;
     fragmentKey: string;
     vertexKey: string;
+    initialUniforms: { [string]: number | number[] | TypedArray | boolean | boolean[] };
     setupUniforms: (
         setUniform: (name: string, value: any) => void,
         drawingContext: Phaser.Renderer.WebGL.DrawingContext
@@ -268,13 +279,26 @@ A more complete explanation follows:
 
 `shaderName`: The name used as the base of the shader program name. If not given, defaults to the `name` property. If your shader code contains `#pragma phaserTemplate(shaderName)`, the name will be inserted there, including this base, any enabled shader additions, and whether it is a vertex or fragment shader. This helps with debug.
 
-`fragmentSource` and `vertexSource`: The source code of the fragment and vertex shaders, as inline strings. Both of these have default options. The default `vertexSource` enables default behavior and should not need to be set. The default `fragmentSource` displays a color gradient to show that the shader is working.
+`fragmentSource` and `vertexSource`: The source code of the fragment and vertex shaders, as inline strings. Both of these have default options. The default `vertexSource` enables default behavior and should not need to be set. The default `fragmentSource` displays a color gradient to show that the shader is working (see below).
 
 `fragmentKey` and `vertexKey`: The key of the fragment and vertex shaders in the game cache. The `fragmentSource` and `vertexSource` properties will override these options, if present.
 
-![Shader with default vertex and fragment shaders](bsg-default-fragment-shader.png)
+![Shader with default vertex and fragment shaders](default-fragment-shader.png)
 
-`setupUniforms`: A function for setting shader program uniforms. It is assigned to the Shader's render node, and runs every time the Shader is rendered. It is invoked with `setUniform()` and `drawingContext`. The `setUniform(name, value)` method is passed in by the render node, and can be called to set uniforms in your shader. This is useful for animating values, and is also necessary for using textures. The `drawingContext` contains information about the current GL state.
+`initialUniforms`: A list of uniforms to set, once, when the shader program is created. You should assign textures to units here if you do not expect to swap textures after creation.
+
+```ts
+// How to set textures on a Shader:
+const config = {
+    initialUniforms: {
+        uTexture: 0,
+        uSecondaryTexture: 1,
+        uThirdTexture: 2
+    }
+};
+```
+
+`setupUniforms`: A function for setting shader program uniforms. It is assigned to the Shader's render node, and runs every time the Shader is rendered. It is invoked with `setUniform()` and `drawingContext`. The `setUniform(name, value)` method is passed in by the render node, and can be called to set uniforms in your shader. This is useful for animating values, and is also necessary for changing textures. The `drawingContext` contains information about the current GL state.
 
 ```ts
 // How to update the `time` uniform on a Shader:
@@ -283,7 +307,7 @@ const config = {
     {
         setUniform('time', this.game.loop.getDuration());
     }
-}
+};
 ```
 
 `shaderAdditions`: A list of shader additions. Different additions may add to the same template location, so order is important. Each addition is an object describing what to add to the shader code. It is of the shape:
@@ -317,7 +341,7 @@ const addition = {
 };
 ```
 
-`updateShaderConfig`: A function which reconfigures the shader program. This is an advanced feature used to manage shader additions. This can be useful if you change a game setting and need to recompile your shader. It is assigned to the Shader's render node. The function is called during rendering, before `setupUniforms`. The function is probably an arrow function, so even though it belongs to the render node its `this` doesn't match, so we pass in the render node as a parameter for convenience.
+`updateShaderConfig`: A function which reconfigures the shader program. This is an advanced feature used to manage shader additions. This can be useful if you change a game setting and need to recompile your shader. It is assigned to the Shader's render node. The function is called during rendering, before `setupUniforms`. The function is probably an arrow function, so even though it belongs to the render node its `this` may not match, so we pass in the render node as a parameter for convenience.
 
 ```ts
 // How to toggle a shader addition on a Shader:
@@ -338,11 +362,36 @@ const config = {
 };
 ```
 
-> **Changing Additions at Runtime**
->
-> As well as enabling or disabling additions, you can edit their code directly.
->
-> However, Beam caches shaders by name, to avoid expensive shader compilation. It will only compile your changes if you change the name of the addition. For example, the core Beam shader which handles sprite rendering has an addition which changes its name based on how many textures each batch should contain; it might be `1TexCount` or `8TexCount`.
+As well as enabling or disabling additions, you can edit their code directly.
+
+However, Phaser 4 caches shaders by name, to avoid expensive shader compilation. It will only compile your changes if you change the name of the addition. For example, the core shader which handles sprite rendering has an addition which changes its name based on how many textures each batch should contain; it might be `1TexCount` or `8TexCount`.
+
+To facilitate the fact that their names can change, additions can have tags.
+
+```ts
+// How to successfully edit a shader addition on a Shader:
+const config = {
+    updateShaderConfig: (gameObject, drawingContext, renderNode) =>
+    {
+        const programManager = renderNode.programManager;
+
+        // How to get an addition when you don't know its name:
+        // (it's up to you to handle the case where multiple additions share a tag)
+        const myAddition = programManager.getAdditionsByTag('ITERATOR')[0];
+
+        // Edit the tag:
+        const iterations = gameObject.iterations;
+        myAddition.name = 'ITERATIONS_' + iterations; // Trigger recompilation.
+        myAddition.fragmentHeader = '#define ITERATION_COUNT ' + iterations;
+        // Note: this edit has a SPACE before the variable.
+        // Note 2: GLSL will interpret this as an `int`, not a `float`,
+        // unless you add a trailing '.0' or '.'.
+        //
+        // We use a similar pattern to change the length of `for` loops internally,
+        // because GLSL does not support variable loop length after compile time.
+    }
+};
+```
 
 #### Textures in Shaders
 
@@ -373,8 +422,8 @@ class Example extends Phaser.Scene
         const shader = this.add.shader({
             name: 'simpleTexture',
             fragmentSource: frag,
-            setupUniforms: (setUniform, drawingContext) => {
-                setUniform('iChannel0', 0);
+            initialUniforms: {
+                iChannel0: 0
             }
         }, 400, 300, 800, 600, [ 'checker' ]);
     }
@@ -388,7 +437,7 @@ const game = new Phaser.Game({
 });
 ```
 
-Note that the Shader object is constructed with a `setupUniforms` method which sets the texture uniform, and a list of textures `[ 'checker' ]`. Because the texture is at index 0 in this list, it will be assigned to texture unit 0, so we set the uniform for the texture to 0. Other textures would be in unit 1, then 2, 3 etc. If you do not set the uniform for a texture, it will be 0; this may still work if you are using a single texture, but it is not usually what you want.
+Note that the Shader object is constructed with an `initialUniforms` object which sets the texture uniform, and a list of textures `[ 'checker' ]`. Because the texture is at index 0 in this list, it will be assigned to texture unit 0, so we set the uniform for the texture to 0. Other textures would be in unit 1, then 2, 3 etc. If you do not set the uniform for a texture, it will be 0; this may still work if you are using a single texture, but it is not usually what you want.
 
 When using textures, you may find it useful to adjust the texture coordinates using `shader.setTextureCoordinates()` or `shader.setTextureCoordinatesFromFrame()` if you are using a frame from a texture atlas.
 
@@ -405,7 +454,7 @@ Filters are available on cameras and all game objects. Consider the following ar
 
 Filters are available on cameras by default at `camera.filters`. To use filters on game objects, run `gameObject.enableFilters()`, then access `gameObject.filters`.
 
-Filters are divided into two lists: `filters.internal` and `filters.external`. Internal filters try to follow the camera or object. External filters run after the internal filters, and sit "outside" the camera or object.
+Filters are divided into two lists: `filters.internal` and `filters.external`. Internal filters try to follow the camera or object. External filters run after the internal filters, and sit "outside" or "after" the camera or object - they usually affect the whole screen.
 
 Create a Filter in a list with an add method, e.g. `const filterController = gameObject.filters.internal.addBlur()`. Filters usually have several configuration parameters, which can be modified from the controller object later on.
 
@@ -413,13 +462,13 @@ Each filter can set padding using `filterController.setPaddingOverride()`. Pass 
 
 Here's a simple diagram of padding and the internal/external context.
 
-![Internal and external padding on filters](bsg-filter-padding.png)
+![Internal and external padding on filters](filter-padding.png)
 
 The external context is _usually_ the screen, but if you are rendering objects inside other objects, the external context might be the internal context of another filter.
 
 If you put internal filters on something without width and height values, the internal context is the same as the external filters.
 
-On a technical level, each filter draws to a fresh framebuffer, which is passed as a texture input to the next filter. This is handled by a pool of DrawingContext objects maintained by the Beam renderer.
+On a technical level, each filter draws to a fresh framebuffer, which is passed as a texture input to the next filter. This is handled by a pool of DrawingContext objects maintained by the renderer.
 
 ### Authoring Filters
 
@@ -442,12 +491,14 @@ class BumpToNormal extends Phaser.Filters.Controller
 
 const fragmentShaderBumpToNormal = `// GLSL code goes here`;
 
+const additions = {}; // You would define any additions here.
+
 class FilterBumpToNormal extends Phaser.Renderer.WebGL.RenderNodes.BaseFilterShader
 {
     constructor (manager)
     {
         // The name 'FilterBumpToNormal' is used by the Controller.
-        super('FilterBumpToNormal', manager, null, fragmentShaderBumpToNormal);
+        super('FilterBumpToNormal', manager, null, fragmentShaderBumpToNormal, additions);
     }
 
     // This function is called by the renderer.
@@ -483,7 +534,7 @@ class FilterBumpToNormal extends Phaser.Renderer.WebGL.RenderNodes.BaseFilterSha
 }
 ```
 
-Note that a Filter only takes a fragment shader; there is no option for a vertex shader. This is because the vertexes are calculated by Beam as it composites the filter stack.
+Note that a Filter only takes a fragment shader; there is no option for a vertex shader. This is because the vertexes are calculated by Phaser as it composites the filter stack.
 
 Note also that the BaseFilterShader extension uses inline GLSL code for this example. It also supports loaded GLSL files, just like Shader; use `super('FilterBumpToNormal', manager, key)` where `key` replaces `null` to use a cache key.
 
@@ -526,4 +577,4 @@ This is a simple example. You can use all the more advanced features of Shaders 
 super(name, manager, fragmentShaderKey, fragmentShaderSource, shaderAdditions);
 ```
 
-There are many more intricate possibilities in Beam, but the areas covered by this guide should be enough for most uses, and it shows you all the key areas. To learn more, try digging into the Phaser source code at https://github.com/phaserjs/phaser and see how we've used the principles explained here. We have not explained the systems used to set up GPU resources, including index buffers, VAOs, and attribute binding, as they are relevant only when designing vertex shaders with their own attribute schemes. Shaders and Filters use quads managed by the Phaser Beam renderer, which keeps everything simple.
+There are many more intricate possibilities in Phaser 4, but the areas covered by this guide should be enough for most uses, and it shows you all the key areas. To learn more, try digging into the Phaser source code at https://github.com/phaserjs/phaser and see how we've used the principles explained here. We have not explained the systems used to set up GPU resources, including index buffers, VAOs, and attribute binding, as they are relevant only when designing vertex shaders with their own attribute schemes. Shaders and Filters use quads managed by the Phaser 4 renderer, which keeps everything simple.
