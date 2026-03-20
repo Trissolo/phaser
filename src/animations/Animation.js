@@ -145,7 +145,7 @@ var Animation = new Class({
         this.repeat = GetValue(config, 'repeat', 0);
 
         /**
-         * The delay in ms before the a repeat play starts.
+         * The delay in ms before a repeat play starts.
          *
          * @name Phaser.Animations.Animation#repeatDelay
          * @type {number}
