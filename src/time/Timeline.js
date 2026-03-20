@@ -150,7 +150,7 @@ var Timeline = new Class({
         this.timeScale = 1;
 
         /**
-         * Whether the Timeline is running (`true`) or active (`false`).
+         * Whether the Timeline is paused (`true`) or active (`false`).
          *
          * When paused, the Timeline will not run any of its actions.
          *
