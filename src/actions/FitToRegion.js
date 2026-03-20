@@ -40,7 +40,7 @@ var GetFastValue = require('../utils/object/GetFastValue');
  * @param {Phaser.Types.Math.RectangleLike} [region] - The region to fit. If not defined, it will be inferred from the item's scene scale.
  * @param {Phaser.Types.Actions.FitToRegionItemCoverage} [itemCoverage] - Override or define the region covered by the item. This is intended to provide dimensions for objects which don't have them, such as Containers, allowing them to resize.
  *
- * @returns {Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Transform} - The item that was fitted.
+ * @return {Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Transform} - The item that was fitted.
  */
 var FitToRegion = function (item, scaleMode, region, itemCoverage)
 {
