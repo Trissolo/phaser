@@ -129,7 +129,7 @@ var HTML5AudioSoundManager = new Class({
          * for HTML5 Audio sound manager implementation.
          *
          * @name Phaser.Sound.HTML5AudioSoundManager#_volume
-         * @type {boolean}
+         * @type {number}
          * @private
          * @default 1
          * @since 3.0.0
