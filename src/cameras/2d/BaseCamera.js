@@ -49,7 +49,7 @@ var Vector2 = require('../../math/Vector2');
  * @since 3.12.0
  *
  * @extends Phaser.Events.EventEmitter
- * @extends Phaser.GameObjects.Components.Alpha
+ * @extends Phaser.GameObjects.Components.AlphaSingle
  * @extends Phaser.GameObjects.Components.Visible
  *
  * @param {number} x - The x position of the Camera, relative to the top-left of the game canvas.
