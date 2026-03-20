@@ -7,7 +7,7 @@
 var Contains = require('./Contains');
 
 /**
- * Checks the given Point again the Polygon to see if the Point lays within its vertices.
+ * Checks the given Point against the Polygon to see if the Point lays within its vertices.
  *
  * @function Phaser.Geom.Polygon.ContainsPoint
  * @since 3.0.0
