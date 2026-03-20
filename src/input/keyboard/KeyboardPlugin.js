@@ -608,7 +608,7 @@ var KeyboardPlugin = new Class({
      * @since 3.24.0
      *
      * @param {boolean} [destroy=false] - Call `Key.destroy` on each removed Key object?
-     * @param {boolean} [removeCapture=false] - Remove all key captures for Key objects owened by this plugin?
+     * @param {boolean} [removeCapture=false] - Remove all key captures for Key objects owned by this plugin?
      *
      * @return {this} This KeyboardPlugin object.
      */
