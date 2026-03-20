@@ -336,7 +336,7 @@ var NoAudioSoundManager = new Class({
      * @private
      * @since 3.0.0
      *
-     * @param {Phaser.Types.Sound.EachActiveSoundCallback} callback - Callback function. (manager: Phaser.Sound.BaseSoundManager, sound: Phaser.Sound.BaseSound, index: number, sounds: Phaser.Manager.BaseSound[]) => void
+     * @param {Phaser.Types.Sound.EachActiveSoundCallback} callbackfn - Callback function. (sound: Phaser.Sound.BaseSound, index: number, sounds: Phaser.Sound.BaseSound[]) => void
      * @param {*} [scope] - Callback context.
      */
     forEachActiveSound: function (callbackfn, scope)
