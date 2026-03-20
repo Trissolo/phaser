@@ -14,11 +14,11 @@ var MultiFile = require('../MultiFile');
 
 /**
  * @classdesc
- * A single JSON based Texture Atlas File suitable for loading by the Loader.
+ * A single Aseprite Animation File suitable for loading by the Loader.
  *
- * These are created when you use the Phaser.Loader.LoaderPlugin#atlas method and are not typically created directly.
+ * These are created when you use the Phaser.Loader.LoaderPlugin#aseprite method and are not typically created directly.
  *
- * For documentation about what all the arguments and configuration options mean please see Phaser.Loader.LoaderPlugin#atlas.
+ * For documentation about what all the arguments and configuration options mean please see Phaser.Loader.LoaderPlugin#aseprite.
  *
  * https://www.codeandweb.com/texturepacker/tutorials/how-to-create-sprite-sheets-for-phaser3?source=photonstorm
  *
