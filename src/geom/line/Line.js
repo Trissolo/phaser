@@ -20,10 +20,10 @@ var Vector2 = require('../../math/Vector2');
  * @constructor
  * @since 3.0.0
  *
- * @param {number} [x1=0] - The x coordinate of the lines starting point.
- * @param {number} [y1=0] - The y coordinate of the lines starting point.
- * @param {number} [x2=0] - The x coordinate of the lines ending point.
- * @param {number} [y2=0] - The y coordinate of the lines ending point.
+ * @param {number} [x1=0] - The x coordinate of the line's starting point.
+ * @param {number} [y1=0] - The y coordinate of the line's starting point.
+ * @param {number} [x2=0] - The x coordinate of the line's ending point.
+ * @param {number} [y2=0] - The y coordinate of the line's ending point.
  */
 var Line = new Class({
 
