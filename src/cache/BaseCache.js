@@ -119,7 +119,7 @@ var BaseCache = new Class({
     },
 
     /**
-     * Removes and item from this cache based on the given key.
+     * Removes an item from this cache based on the given key.
      *
      * If an entry matching the key is found it is removed from the cache and a `remove` event emitted.
      * No additional checks are done on the item removed. If other systems or parts of your game code
