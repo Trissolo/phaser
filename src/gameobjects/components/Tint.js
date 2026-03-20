@@ -18,7 +18,7 @@ var TintModes = require('../../renderer/TintModes');
 var Tint = {
 
     /**
-     * The tint value being applied to the top-left vertice of the Game Object.
+     * The tint value being applied to the top-left vertex of the Game Object.
      * This value is interpolated from the corner to the center of the Game Object.
      * The value should be set as a hex number, i.e. 0xff0000 for red, or 0xff00ff for purple.
      *
@@ -30,7 +30,7 @@ var Tint = {
     tintTopLeft: 0xffffff,
 
     /**
-     * The tint value being applied to the top-right vertice of the Game Object.
+     * The tint value being applied to the top-right vertex of the Game Object.
      * This value is interpolated from the corner to the center of the Game Object.
      * The value should be set as a hex number, i.e. 0xff0000 for red, or 0xff00ff for purple.
      *
@@ -42,7 +42,7 @@ var Tint = {
     tintTopRight: 0xffffff,
 
     /**
-     * The tint value being applied to the bottom-left vertice of the Game Object.
+     * The tint value being applied to the bottom-left vertex of the Game Object.
      * This value is interpolated from the corner to the center of the Game Object.
      * The value should be set as a hex number, i.e. 0xff0000 for red, or 0xff00ff for purple.
      *
@@ -54,7 +54,7 @@ var Tint = {
     tintBottomLeft: 0xffffff,
 
     /**
-     * The tint value being applied to the bottom-right vertice of the Game Object.
+     * The tint value being applied to the bottom-right vertex of the Game Object.
      * This value is interpolated from the corner to the center of the Game Object.
      * The value should be set as a hex number, i.e. 0xff0000 for red, or 0xff00ff for purple.
      *
@@ -115,7 +115,7 @@ var Tint = {
      * per corner. The colors are blended together across the extent of the Game Object.
      *
      * To modify the tint color once set, either call this method again with new values or use the
-     * `tint` property to set all colors at once. Or, use the properties `tintTopLeft`, `tintTopRight,
+     * `tint` property to set all colors at once. Or, use the properties `tintTopLeft`, `tintTopRight`,
      * `tintBottomLeft` and `tintBottomRight` to set the corner color values independently.
      *
      * To remove a tint call `clearTint`.
