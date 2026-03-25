@@ -62,7 +62,7 @@ var Set = function (b1, b2, ov)
     body2OnLeft = !body1OnLeft;
     body2FullImpact = v1 - v2 * body2.bounce.x;
 
-    //  negative delta = up, positive delta = down (inc. gravity)
+    //  negative delta = left, positive delta = right (inc. gravity)
     overlap = Math.abs(ov);
 
     return BlockCheck();
@@ -319,7 +319,7 @@ var Run = function (side)
             else
             {
                 //  Body1 moving same direction as Body2
-                body1.processX(halfOverlap, body2.velocity.y, true);
+                body1.processX(halfOverlap, body2.velocity.x, true);
                 body2.processX(-halfOverlap, null, false, true);
             }
         }
