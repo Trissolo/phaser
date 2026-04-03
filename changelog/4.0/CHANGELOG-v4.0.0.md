@@ -1,6 +1,6 @@
 # Phaser 4.0.0 Changelog
 
-Phaser v4 contains a brand-new, highly efficient WebGL renderer. The entire rendering pipeline from Phaser v3 has been replaced. Alongside the new renderer, v4 brings a wealth of new game objects, a powerful filter system, a rewritten camera system, an overhauled tint API, and hundreds of fixes and improvements.
+Phaser v4 is a major release built on a brand-new, highly efficient WebGL renderer. The entire rendering pipeline from Phaser v3 has been replaced with a modern render node architecture that manages WebGL state, supports context restoration, and prioritizes performance. Alongside the new renderer, v4 brings new game objects, a unified filter system replacing both FX and Masks, a rewritten camera system, overhauled tint and shader APIs, a new lighting model, and hundreds of fixes and improvements.
 
 For a step-by-step guide on updating your v3 project, see the [Migration Guide](MIGRATION-GUIDE.md).
 
@@ -9,26 +9,35 @@ For a step-by-step guide on updating your v3 project, see the [Migration Guide](
 ## Table of Contents
 
 1. [Breaking Changes and Removals](#breaking-changes-and-removals)
-    - [Renderer](#renderer)
+    - [Renderer: Pipelines Replaced by Render Nodes](#renderer-pipelines-replaced-by-render-nodes)
+    - [Canvas Renderer Deprecated](#canvas-renderer-deprecated)
+    - [FX and Masks Unified into Filters](#fx-and-masks-unified-into-filters)
     - [Tint System](#tint-system)
     - [Camera System](#camera-system)
-    - [Texture Coordinates](#texture-coordinates)
+    - [Texture Coordinates and GL Orientation](#texture-coordinates-and-gl-orientation)
     - [DynamicTexture and RenderTexture](#dynamictexture-and-rendertexture)
+    - [Shader API](#shader-api)
+    - [GLSL Loading](#glsl-loading)
+    - [Lighting](#lighting)
+    - [TileSprite](#tilesprite)
+    - [Graphics and Shape](#graphics-and-shape)
     - [Geometry: Point Replaced by Vector2](#geometry-point-replaced-by-vector2)
     - [Math Constants](#math-constants)
     - [Data Structures](#data-structures)
-    - [TileSprite](#tilesprite)
+    - [Removed Game Objects](#removed-game-objects)
     - [Removed Plugins, Entry Points and Polyfills](#removed-plugins-entry-points-and-polyfills)
     - [Other Breaking Changes](#other-breaking-changes)
 2. [New Features](#new-features)
     - [New Game Objects](#new-game-objects)
     - [New Filters](#new-filters)
     - [New Actions](#new-actions)
+    - [Lighting](#lighting-features)
     - [Rendering and Shaders](#rendering-and-shaders)
     - [Display and Color](#display-and-color)
     - [Math](#math)
     - [Textures](#textures)
     - [SpriteGPULayer](#spritegpulayer)
+    - [TileSprite Features](#tilesprite-features)
     - [DynamicTexture and RenderTexture Features](#dynamictexture-and-rendertexture-features)
     - [Tilemaps](#tilemaps)
     - [Phaser v3 Enhancements Merged](#phaser-v3-enhancements-merged)
@@ -36,20 +45,20 @@ For a step-by-step guide on updating your v3 project, see the [Migration Guide](
 3. [Updates and Improvements](#updates-and-improvements)
     - [Rendering and Performance](#rendering-and-performance)
     - [Round Pixels](#round-pixels)
-    - [Filters](#filters)
+    - [Filters](#filters-improvements)
     - [Camera](#camera)
     - [Input](#input)
     - [Other Updates](#other-updates)
 4. [Bug Fixes](#bug-fixes)
     - [Rendering and Filters](#rendering-and-filters)
-    - [Camera](#camera-fixes)
+    - [Camera Fixes](#camera-fixes)
     - [Physics](#physics)
-    - [Tilemaps](#tilemap-fixes)
-    - [DynamicTexture and RenderTexture](#dynamictexture-and-rendertexture-fixes)
-    - [Game Objects](#game-object-fixes)
-    - [Textures](#texture-fixes)
-    - [SpriteGPULayer](#spritegpulayer-fixes)
-    - [Input](#input-fixes)
+    - [Tilemap Fixes](#tilemap-fixes)
+    - [DynamicTexture and RenderTexture Fixes](#dynamictexture-and-rendertexture-fixes)
+    - [Game Object Fixes](#game-object-fixes)
+    - [Texture Fixes](#texture-fixes)
+    - [SpriteGPULayer Fixes](#spritegpulayer-fixes)
+    - [Input Fixes](#input-fixes)
     - [Loader and Audio](#loader-and-audio)
     - [Tweens and Timeline](#tweens-and-timeline)
     - [Other Fixes](#other-fixes)
@@ -60,9 +69,13 @@ For a step-by-step guide on updating your v3 project, see the [Migration Guide](
 
 ## Breaking Changes and Removals
 
-### Renderer
+### Renderer: Pipelines Replaced by Render Nodes
 
-The entire WebGL renderer from Phaser v3 has been replaced with a new render node architecture. If your game only uses the standard Phaser API, the new renderer should work transparently. If you wrote custom WebGL pipelines, they will need to be rewritten using the new render node system.
+The entire WebGL renderer from Phaser v3 has been replaced. The v3 `Pipeline` system, where individual pipelines frequently held multiple responsibilities and had to manage WebGL state themselves, has been removed. In its place is a new `RenderNode` architecture. Each render node handles a single rendering task, making the system more maintainable and reliable. All render nodes have a `run` method, and some have a `batch` method to assemble state from several sources before invoking `run`.
+
+It is generally not necessary to interact with render nodes directly, but game objects maintain `defaultRenderNodes` and `customRenderNodes` maps for configuration. Use `RenderConfig#renderNodes` to register custom render nodes at boot.
+
+The following internal renderer properties have been removed:
 
 - Remove `WebGLAttribLocationWrapper` as it is unused.
 - Remove `WebGLRenderer.textureIndexes` as `glTextureUnits.unitIndices` now fills this role.
@@ -70,7 +83,38 @@ The entire WebGL renderer from Phaser v3 has been replaced with a new render nod
 - `WebGLRenderer#genericVertexBuffer` and `#genericVertexData` removed.
   - This frees 16MB of RAM and VRAM.
 - `BatchHandlerConfig#createOwnVertexBuffer` type property removed.
-- Remove references to Mesh.
+
+### Canvas Renderer Deprecated
+
+The Canvas renderer is still available but should be considered deprecated. Canvas rendering does not support any of the WebGL techniques used in Phaser v4's advanced rendering features. Many features from Phaser 3 never worked in Canvas, and almost everything new in Phaser 4 is not available in Canvas. As WebGL support is effectively baseline today, we recommend focusing on WebGL.
+
+Canvas does retain one advantage: a wider range of blend modes (27 modes vs WebGL's 4 native modes of NORMAL, ADD, MULTIPLY and SCREEN). The new `Blend` filter can recreate all of these Canvas blend modes in WebGL, though it requires indirection through a `CaptureFrame`, `DynamicTexture`, or similar.
+
+### FX and Masks Unified into Filters
+
+FX and Masks from Phaser v3 have been unified under a single system called **Filters**. A Filter takes an input image and creates an output image, usually via a single shader program. This ensures all filters are compatible with one another, even if they have no knowledge of each other.
+
+Filters can be applied to **any game object or scene camera**. Phaser 3 had restrictions on which objects supported FX and whether preFX and postFX were available. Phaser 4 removes this restriction entirely. You can even apply filters to `Extern` objects.
+
+Filters are divided into **internal** and **external** lists. Internal filters affect just the object itself. External filters affect the object in its rendering context, usually the full screen. Internal filters are a good way to have filters match the position of the object. Some objects cannot define the internal space (objects without width or height, and `Shape` objects whose stroke may extend beyond reported bounds), so they use the external space instead.
+
+**Removed FX (replaced by Actions or Game Objects):**
+
+The following derived FX from v3 have been removed and replaced:
+
+- `Bloom` FX is now `Phaser.Actions.AddEffectBloom()`, which creates a set of filters applying bloom to a target Camera or GameObject.
+- `Shine` FX is now `Phaser.Actions.AddEffectShine()`, which creates a Gradient and blends a shine across the target.
+- `Circle` FX is now a case of `Phaser.Actions.AddMaskShape()`, which creates a Shape and uses it to add a mask.
+- `Gradient` FX is replaced by the new `Gradient` game object, as it replaces the image entirely rather than altering it.
+
+**Removed masking classes:**
+
+- `BitmapMask` has been removed. It was only used in WebGL, which now has the `Mask` filter for more powerful masking operations.
+- `GeometryMask` remains available in the Canvas renderer but is not used in WebGL.
+
+**ColorMatrix filter change:**
+
+The existing `ColorMatrix` filter shifted its color management methods onto a `colorMatrix` property. For example, you now call `colorMatrix.colorMatrix.sepia()` instead of `colorMatrix.sepia()`.
 
 ### Tint System
 
@@ -103,13 +147,54 @@ The camera matrix system has been rewritten. If you only use standard camera pro
 - `GetCalcMatrixResults` now includes a `matrixExternal` property, and factors scroll into the `camera` and `calc` matrices.
 - To get a copy of a matrix with scroll factor applied, use `TransformMatrix#copyWithScrollFactorFrom(matrix, scrollX, scrollY, scrollFactorX, scrollFactorY)`. This generally replaces cases where phrases such as `spriteMatrix.e -= camera.scrollX * src.scrollFactorX` were used.
 
-### Texture Coordinates
+### Texture Coordinates and GL Orientation
+
+Phaser v3 represented textures using top-left orientation, which led to mismatches: framebuffers would be drawn upside-down, then flipped to draw to the screen. Phaser v4 has switched to using GL orientation throughout. This is largely invisible to the user as Phaser handles texture coordinate translation automatically, but some shader code may need to be revised as top and bottom may have switched.
 
 Texture coordinates now match WebGL standards. This should bring greater compatibility with other technologies. Note that compressed textures must be re-compressed to work with this system: ensure that the Y axis starts at the bottom and increases upwards.
 
 ### DynamicTexture and RenderTexture
 
+In Phaser v3, `DynamicTexture` allowed you to define batches and perform intricate drawing operations directly. While efficient, this was too technical for most uses and it used its own drawing logic, creating compatibility issues. In Phaser v4, many of these complex methods have been removed. Instead, the basic rendering system is used, which supports batching automatically.
+
 - `DynamicTexture` and `RenderTexture` must call `render()` to actually draw.
+
+### Shader API
+
+The `Shader` game object has been significantly rewritten for Phaser v4. Existing Shader objects from v3 will need to be updated.
+
+- The game object construction signature has changed. It now takes a config object (`ShaderQuadConfig`) which allows you to configure the way the shader executes.
+- Shaders formerly set a number of shader uniforms in line with websites like Shadertoy. These uniforms are no longer set automatically. You can encode them into your configuration if you need them.
+- Note that the texture coordinates of your shader will now use GL conventions, where Y=0 is at the bottom of the image.
+
+### GLSL Loading
+
+The way Phaser loads GLSL code has changed:
+
+- GLSL code is now loaded without regard to how it will be used. It is not classified as fragment or vertex code, because under the new system it could be either, or both. You load fragment and vertex shaders separately and combine them when creating a Shader.
+- Custom templates have been removed from shader code. Phaser now uses `#pragma` preprocessor directives, which are valid GLSL and work with automated syntax checkers. The pragmas are removed before compilation and serve merely as identifiers for custom templates.
+
+### Lighting
+
+In Phaser v3, lighting was added to objects by assigning a new pipeline. In Phaser v4, simply call `gameObject.setLighting(true)`. You don't need to worry about how lighting is applied internally.
+
+In Phaser v3, lights had an implicit height based on the game resolution. In Phaser v4, lights have a `z` value to set height explicitly.
+
+Note that lighting changes the shader, which breaks batches.
+
+### TileSprite
+
+In Phaser v3, `TileSprite` used WebGL texture wrapping parameters to repeat the texture. This approach only repeated the entire texture file and had problems with compressed textures, non-power-of-two textures, and DynamicTextures.
+
+In Phaser v4, `TileSprite` uses a different shader that manually controls texture coordinate wrapping. This now supports any texture and can use frames within that texture, enabling texture atlas and spritesheet support.
+
+- `TileSprite` no longer supports texture cropping.
+- TileSprite now assigns default dimensions to each dimension separately.
+
+### Graphics and Shape
+
+- `Grid` has changed property names to follow the conventions of other Shapes: it has a **stroke** instead of an **outline**. Grid also has controls for how to render the gutters between grid cells, and whether to draw outlines on the outside of the grid or just between cells.
+- Remove references to Mesh.
 
 ### Geometry: Point Replaced by Vector2
 
@@ -170,10 +255,9 @@ The `Geom.Point` class and all related functions have been removed. All function
 - `Phaser.Struct.Set` has been replaced with a native JavaScript `Set`. Methods like `iterateLocal` are gone. Use standard `Set` methods instead.
 - `Phaser.Struct.Map` has been replaced with a native JavaScript `Map`. Methods like `contains` and `setAll` are gone. Use standard `Map` methods instead.
 
-### TileSprite
+### Removed Game Objects
 
-- `TileSprite` no longer supports texture cropping.
-- TileSprite now assigns default dimensions to each dimension separately.
+- `Mesh` and `Plane` have been removed. These were limited 3D implementations; proper 3D support is planned for the future.
 
 ### Removed Plugins, Entry Points and Polyfills
 
@@ -187,6 +271,7 @@ The following have been removed entirely:
 - `TextureManager.generate` (as a result of the GenerateTexture removal).
 - `Math.SinCosTableGenerator`.
 - The following polyfills: Array.forEach, Array.isArray, AudioContextMonkeyPatch, console, Math.trunc, performance.now, requestAnimationFrame and Uint32Array.
+- The Spine 3 and Spine 4 plugins will no longer be updated. You should now use the official Phaser Spine plugin created by Esoteric Software.
 
 ### Other Breaking Changes
 
@@ -201,6 +286,8 @@ The following have been removed entirely:
 
 ### New Game Objects
 
+All new game objects are WebGL-only unless otherwise noted.
+
 - `GameObjects.Gradient` is a new game object which renders gradients.
   - Gradient shapes include:
     - `LINEAR`
@@ -214,6 +301,7 @@ The following have been removed entirely:
     - `SAWTOOTH`: gradient starts over every time it completes.
     - `TRIANGULAR`: gradient reverses direction every time it gets to the end or start.
   - Optional Interleaved Gradient Noise based dithering to eliminate banding.
+  - Colors are defined in a `ColorRamp` containing `ColorBand` objects. Every number between 0 and 1 corresponds to a precise color from the gradient ramp, accessible through code.
 - `GameObjects.Noise` renders noise patterns.
   - Control value power curve.
   - Select from trigonometric or PCG algorithms.
@@ -230,20 +318,29 @@ The following have been removed entirely:
   - Apply turbulence and output shaping for a variety of effects.
   - Supports rendering as a texture or normal map for use in other effects.
 - `GameObjects.NineSlice` has two new parameters: `tileX`, `tileY`, which allow non-corner regions of the NineSlice to tile instead of stretch. Some stretching is still applied to keep the tile count a whole number. Thanks to @skhoroshavin for this contribution!
-- Add SpriteGPULayer game object.
+- `GameObjects.SpriteGPULayer` is a new high-performance game object optimized for rendering very large numbers of quads. It is suited to complex animated backgrounds and particle-like effects. It stores rendering data in a GPU buffer and renders all members in a single draw call. Because it only updates the GPU buffer when necessary, it is up to 100 times faster than rendering the same objects individually. The layer can generally perform well with a million small quads. See the dedicated [SpriteGPULayer](#spritegpulayer) section below for full details.
+- `GameObjects.TilemapGPULayer` is a new high-performance tilemap renderer. It renders an entire tilemap layer as a single quad via a specialized shader, with a fixed cost per pixel on screen regardless of how many tiles are visible. See the dedicated [TilemapGPULayer](#tilemapgpulayer) section below for full details.
+- `GameObjects.Stamp` renders a quad without any reference to the camera. This is mostly used for `DynamicTexture` operations. Available in both WebGL and Canvas.
 - Add `CaptureFrame` game object, which copies the current framebuffer to a texture when it renders. This is useful for applying post-processing prior to post.
 - `GameObject#isDestroyed` flag helps you avoid errors when accessing an object that might have removed expected properties during destruction.
 
 ### New Filters
 
+Filters can be applied to any game object or scene camera.
+
+- `Blend` filter combines the input with a texture. This is similar to blend modes, but supports all the blend modes available in the Canvas renderer (not just WebGL's 4 native modes). Also supports overdriving, mixing outside the usual 0-1 range, for useful color effects.
 - `Blocky` filter added. This is similar to Pixelate, but it picks just a single color from the image, preserving the palette of pixel art. You can also configure the pixel width and height, and offset. This is a good option for pixelating a retro game at high resolution, setting up for additional filters such as CRT emulation.
 - `CombineColorMatrix` filter for remixing alpha and other channels between images.
 - `GradientMap` filter for recoloring images using a gradient and their own brightness.
+- `ImageLight` filter for image-based lighting, a soft, highly realistic form of illumination. Supports 360 degree panoramas for realistic reflections, or simpler gradients and images for the impression of a natural scene.
 - `Key` filter for removing or isolating colors.
-- `ImageLight` filter for image-based lighting, a soft, highly realistic form of illumination.
-- `PanoramaBlur` filter for adjusting images for `ImageLight`.
-- `NormalTools` filter for manipulating normal maps.
-- `Quantize` filter for reducing colors and dithering.
+- `Mask` filter takes the place of masks from Phaser 3. It can take a texture, or a game object which it draws to a DynamicTexture. A Container with other objects, even objects with their own filters and masks, is a valid mask source. Supports `scaleFactor` parameter for creating scaled-down framebuffers to save memory in large games. Thanks to kimdanielarthur-cowlabs for developing the initial solution.
+- `NormalTools` filter for manipulating normal maps. Supports rotation, squishing, and "ratio" output measuring how closely the surface faces the viewpoint.
+- `PanoramaBlur` filter for adjusting images for `ImageLight`. Runs in spherical space to average out 360 degree panorama files for diffuse environment maps.
+- `Parallel Filters` filter passes the input image through two different filter lists and combines them at the end. Useful when you want some memory in a complex stack of filters.
+- `Quantize` filter for reducing colors and dithering. Implements dithering with Interleaved Gradient Noise for excellent quality even with very few colors.
+- `Sampler` filter extracts data from the WebGL texture and sends it back to the CPU for use in a callback. Similar to the snapshot functions available on DynamicTexture.
+- `Threshold` filter applies a soft or hard threshold to the colors in the image.
 - `Vignette` filter returns from Phaser 3.
   - Now sets a configurable border color instead of erasing alpha.
   - Also supports limited blend modes.
@@ -251,7 +348,6 @@ The following have been removed entirely:
   - Now allows you to set the texture displayed in wiped-away regions.
   - Now provides helper functions to set directional reveal/wipe effects.
 - Add Filter support to `Layer`.
-- `Mask` filter now supports `scaleFactor` parameter, allowing the creation of scaled-down framebuffers. This can save memory in large games, but you must manage scaling logic yourself. Thanks to kimdanielarthur-cowlabs for developing the initial solution.
 - Add chainable setter methods to `Filter` component: `setFiltersAutoFocus`, `setFiltersFocusContext`, `setFiltersForceComposite`, `setRenderFilters`.
 
 ### New Actions
@@ -260,6 +356,13 @@ The following have been removed entirely:
 - `Actions.AddEffectShine` allows you to quickly set up a shine effect, using a new Gradient and filters, on a target Camera or GameObject.
 - `Actions.AddMaskShape` allows you to quickly add shapes to a target Camera or GameObject as Masks. Blurred edges and inversion are supported.
 - `Actions.FitToRegion` transforms an object to fit a region, such as the screen.
+
+### Lighting
+
+- Lighting is now enabled via `gameObject.setLighting(true)` instead of assigning a pipeline.
+- Lighting is available on many game objects, including BitmapText, Blitter, Graphics and Shape, Image and Sprite, Particles, SpriteGPULayer, Stamp, Text, TileSprite, Video, and TilemapLayer and TilemapGPULayer.
+- Objects can now cast "self-shadows", using a more realistic shader that simulates shadows cast by features on their own surface, based on the brightness of the texture. Self-shadows can be enabled as a game-wide setting or per-object.
+- Lights now have a `z` value to set height explicitly, replacing the implicit height based on game resolution from Phaser v3.
 
 ### Rendering and Shaders
 
@@ -282,6 +385,8 @@ The following have been removed entirely:
     - `"full"`: Always round vertex positions. This can cause sprites to wobble if their vertices are not safely aligned with the pixel resolution, e.g. during rotations. This is good for a touch of PlayStation 1 style jank.
     - `"fullAuto"`: Like "full", but only if rendering through a camera where `roundPixels` is enabled.
   - `GameObject#willRoundVertices(camera, onlyTranslated)` returns whether vertices should be rounded. In the unlikely event that you need to control vertex rounding even more precisely, you are intended to override this method.
+- Phaser v4 now uses GL element drawing with index buffers, meaning each quad only needs 4 vertices uploaded instead of 6 (two thirds of the v3 vertex data cost).
+- The `smoothPixelArt` config option supports antialiasing while preserving sharp texels when scaled up. This is usually the correct choice for retro graphics with big pixels that need to rotate or scale smoothly.
 
 ### Display and Color
 
@@ -320,8 +425,45 @@ The following have been removed entirely:
 
 ### SpriteGPULayer
 
-SpriteGPULayer is an advanced renderer designed to handle millions of background objects.
+`SpriteGPULayer` is a new WebGL-only game object optimized for rendering very large numbers of quads following simple tween-style animations. It is suited to complex animated backgrounds, particle-like effects, and any scenario where you need to render far more sprites than the standard rendering path allows.
 
+**How it works:** SpriteGPULayer stores rendering data for all its member quads in a GPU buffer and renders them in a single draw call. Because it only updates the GPU buffer when the data actually changes, it is up to **100 times faster** than rendering the same objects individually. Standard Phaser rendering can handle tens of thousands of sprites with good performance; SpriteGPULayer can handle **a million or more**.
+
+**Why it's fast:** Regular sprites compute their properties on the CPU every frame and upload the results to the GPU -- that per-frame upload is the main performance bottleneck. SpriteGPULayer skips this entirely by keeping a static buffer on the GPU. The trade-off is memory (168 bytes per member on both CPU and GPU) and reduced flexibility for runtime changes.
+
+**Member capabilities:** Each member in the layer supports:
+
+- **Position, rotation, scale, and alpha** -- each of which can be individually animated with a rich set of GPU-driven easing functions.
+- **Per-member scroll factor** for parallax backgrounds.
+- **Frame animation** -- cycling through texture frames automatically on the GPU without CPU involvement.
+- **Per-vertex tinting** with animated tint blend and all v4 tint modes.
+- **Per-member origin** for pivot control.
+- **Creation time** for staggering animations across members.
+- **Non-looping animations** (set `loop: false`) for one-off particle effects and dynamic sources.
+
+**Animation easing:** Members support a comprehensive set of GPU-computed easing functions: Linear, Gravity, Quad, Cubic, Quart, Quint, Sine, Expo, Circ, Back, Bounce, Stepped, and Smoothstep -- each with easeIn, easeOut, and easeInOut variants. Animations support yoyo and delay. The Gravity ease mode provides physics-style acceleration with configurable velocity and gravity factor.
+
+**Texture requirements:** SpriteGPULayer uses a single texture image (not a multi-atlas). For pixel art or round pixels, use a power-of-two texture to avoid seaming. For smooth mode, add padding around each frame. Single-image textures or textures where frames don't need to tile are unaffected.
+
+**Populating efficiently:** Rather than creating a new `SpriteGPULayer.Member` config object for each `addMember` call, you should reuse the same object and edit its properties between calls. Creating millions of JavaScript objects has a significant allocation and garbage collection cost, so reusing a single config can reduce initialization time from tens of seconds to under a second.
+
+**Modifying the layer:** The following operations require buffer updates and are expensive: `addData`, `addMember`, `editMember`, `patchMember`, `resize`, `removeMembers`, `insertMembers`, `insertMembersData`. The buffer is split into segments so that edits to a small region only update the affected segment. If you need to "remove" a member without costly buffer splicing, set its `scaleX`, `scaleY`, and `alpha` to 0 instead -- it will still be rendered but will fill no pixels.
+
+**API surface:**
+
+- `addMember(member)` -- Add a member to the layer. This is the easiest way to populate it.
+- `addData(data)` -- Add raw Float32Array data to the buffer for maximum efficiency.
+- `editMember(index, member)` -- Replace a member's data at a given index.
+- `patchMember(index, data, mask)` -- Update specific properties of a member using raw data and an optional mask.
+- `getMember(index)` -- Get a copy of a member's data as a readable object.
+- `getMemberData(index, out)` -- Get the raw Uint32Array data of a member for efficient editing.
+- `insertMembers(index, members)` -- Insert one or more members at a specific position.
+- `insertMembersData(index, data)` -- Insert raw data at a specific position.
+- `removeMembers(index, count)` -- Remove members from the layer (causes full buffer update).
+- `resize(count, clear)` -- Resize the layer buffer.
+- `setAnimations(animations)` -- Define frame animations available to members.
+- `setAnimationEnabled(name, enabled)` -- Enable or disable an easing function in the shader. Every enabled animation has a shader cost; low-end devices may be unable to compile many simultaneously.
+- `getDataByteSize()` -- Get the byte stride per member for direct buffer manipulation.
 - Add documentation explaining how to modify a `SpriteGPULayer` efficiently.
 - Add `SpriteGPULayer#insertMembers` method.
 - Add `SpriteGPULayer#insertMembersData` method.
@@ -329,12 +471,44 @@ SpriteGPULayer is an advanced renderer designed to handle millions of background
 - Add non-looping animations to `SpriteGPULayer` (set animation to `loop: false`) to support one-time particle effects and dynamic sources.
 - Add creation time to `SpriteGPULayer` members.
 
+### TilemapGPULayer
+
+`TilemapGPULayer` is a new WebGL-only tilemap renderer that renders an entire tilemap layer as a single quad via a specialized shader. It is optimized for speed and visual quality over flexibility.
+
+**How it works:** The layer encodes its tile data and any tile animations into GPU textures, then renders the full layer in a single draw call. Because the shader has knowledge of the full layer, it can accurately blend across tile boundaries, producing **perfect texture filtering with no seams or bleeding** when antialiasing is enabled -- something a regular `TilemapLayer` cannot achieve. In LINEAR filter mode, borders between tiles are rendered smoothly. In NEAREST mode, sharp pixel edges are preserved.
+
+**Performance:** The rendering cost is fixed per pixel on screen, regardless of how many tiles are visible. It suffers no performance loss when many tiles are visible. It can render a layer up to **4096 x 4096 tiles** and will render the entire layer just as quickly if the camera zooms out to see all 16 million tiles. This makes it a superior choice when large numbers of tiles need to be on screen at once, particularly on mobile platforms. It is almost entirely GPU-bound, freeing up CPU resources for other game code.
+
+**How to create one:** Add the `gpu` flag to a call to `Tilemap.createLayer()`. This returns a `TilemapGPULayer` instance instead of a regular `TilemapLayer`.
+
+**Capabilities and restrictions:**
+
+- Uses a single tileset with a single texture image.
+- Maximum tilemap size of 4096 x 4096 tiles.
+- Maximum of 2^23 (8,388,608) unique tile IDs.
+- Tiles may be flipped and animated.
+- Animation data limit of 8,388,608 entries.
+- **Orthographic tilemaps only** -- not suitable for isometric or hexagonal maps.
+
+**Editing:** The layer can be edited after creation, but changes do not apply automatically. Call `generateLayerDataTexture()` to regenerate the tile data texture after making edits.
+
+- `TilemapLayer` and `TilemapGPULayer` now support a parent matrix during rendering.
+
+### TileSprite Features
+
+TileSprite now uses a new shader that manually controls texture coordinate wrapping, replacing the old approach of relying on WebGL texture wrapping parameters. This enables several new capabilities:
+
+- TileSprite now supports texture frames within atlases and spritesheets.
+- The `tileRotation` property allows you to rotate the repeating texture.
+- The `repeat()` method on DynamicTexture now uses TileSprite behind the scenes, extending its capabilities.
+
 ### DynamicTexture and RenderTexture Features
 
 - Allow `RenderTexture` to automatically re-render.
   - `DynamicTexture#preserve()` allows you to keep the command buffer for reuse after rendering.
   - `DynamicTexture#callback()` allows you to run callbacks during command buffer execution.
   - `RenderTexture.setRenderMode()` allows you to set the RenderTexture to automatically re-render during the render loop.
+- `RenderTexture` has a new `renderMode` property. When set to `"render"`, it draws like an ordinary Image. When set to `"redraw"`, it runs `render()` to update its texture during the render loop but does not draw itself. When set to `"all"`, it does both. The `"redraw"` mode allows updating a texture during the render loop, enabling you to draw things that have only just updated, such as same-frame shader outputs.
 - Add `DynamicTexture#capture`, for rendering game objects more accurately and with greater control than `draw`.
 - `TextureManager#addDynamicTexture` now has `forceEven` parameter.
 
@@ -367,6 +541,7 @@ All enhancements from late Phaser v3 development have been merged into v4. This 
 
 - Add documentation for writing a `Extern#render` function.
 - `Shape` now sets `filtersFocusContext = true` by default, to prevent clipping stroke off at the edges.
+- `Graphics` has a new `pathDetailThreshold` property (also available as a game config option) that skips vertices within a certain distance of one another, greatly improving performance on complex curves displayed in small areas.
 
 ---
 
@@ -397,7 +572,7 @@ All enhancements from late Phaser v3 development have been merged into v4. This 
 - Set `roundPixels` game option to `false` by default. It's very easy to get messy results with this option, but it remains available for use cases where it is necessary.
 - Limit `roundPixels` to only operate when objects are axis-aligned and unscaled. This prevents flicker on transforming objects.
 
-### Filters
+### Filters Improvements
 
 - Mask filter now uses current camera by default.
 - Mask Filter now uses world transforms by preference when drawing the mask. This improves expected outcomes when mask objects are inside Containers.
@@ -547,8 +722,6 @@ All enhancements from late Phaser v3 development have been merged into v4. This 
 ---
 
 ## Documentation and TypeScript
-
-The Spine 3 and Spine 4 plugins will no longer be updated. You should now use the official Phaser Spine plugin created by Esoteric Software.
 
 Fixes to TypeScript documentation: thanks to SBCGames and mikuso for contributions!
 
