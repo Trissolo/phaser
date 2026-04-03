@@ -3,6 +3,7 @@ Thumbs.db
 .DS_Store
 .idea
 .vscode
+.claude/
 *.suo
 *.sublime-project
 *.sublime-workspace
@@ -14,7 +15,6 @@ node_modules/
 /npm-debug.log
 build/
 out/
+docs/phaser.json
 scripts/tsgen/test/bin/
 scripts/tsgen/test/output.txt
-
-plugins/spine*/spine-runtimes/
