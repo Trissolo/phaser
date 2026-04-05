@@ -60,7 +60,7 @@ var FilterSampler = new Class({
      *
      * @method Phaser.Renderer.WebGL.RenderNodes.FilterSampler#run
      * @since 4.0.0
-     * @param {Phaser.Renderer.WebGL.RenderNodes.SamplerFilterController} controller - The filter controller, providing the `region` to sample and the `callback` to receive the result.
+     * @param {Phaser.Filters.Sampler} controller - The Sampler filter controller, providing the `region` to sample and the `callback` to receive the result.
      * @param {Phaser.Renderer.WebGL.DrawingContext} inputDrawingContext - The drawing context whose framebuffer will be sampled.
      * @param {Phaser.Renderer.WebGL.DrawingContext} outputDrawingContext - The output drawing context. Not used by this node.
      * @param {number} padding - Additional padding around the render area. Not used by this node.

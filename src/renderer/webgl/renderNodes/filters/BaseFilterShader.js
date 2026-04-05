@@ -159,7 +159,7 @@ var BaseFilterShader = new Class({
      * @param {Phaser.Filters.Controller} controller - The filter controller that owns this filter.
      * @param {Phaser.Renderer.WebGL.DrawingContext} inputDrawingContext - The input drawing context containing the source texture.
      * @param {Phaser.Renderer.WebGL.DrawingContext} [outputDrawingContext] - An optional output drawing context. If not provided, one will be obtained from the pool.
-     * @param {Phaser.Types.Filters.FilterPadding} [padding] - Optional padding to apply. If not provided, the controller's padding is used.
+     * @param {Phaser.Geom.Rectangle} [padding] - Optional padding Rectangle to apply. If not provided, the controller's padding is used.
      * @return {Phaser.Renderer.WebGL.DrawingContext} The output drawing context containing the filtered result.
      */
     run: function (controller, inputDrawingContext, outputDrawingContext, padding)

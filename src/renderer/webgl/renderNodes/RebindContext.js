@@ -62,7 +62,7 @@ var RebindContext = new Class({
      *
      * @method Phaser.Renderer.WebGL.RenderNodes.RebindContext#run
      * @since 4.0.0
-     * @param {Phaser.Renderer.WebGL.DisplayContext} displayContext - The current display context.
+     * @param {Phaser.Renderer.WebGL.DrawingContext} displayContext - The current drawing context.
      */
     run: function (displayContext)
     {

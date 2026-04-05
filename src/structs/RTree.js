@@ -47,7 +47,7 @@ rbush.prototype = {
      * @method Phaser.Structs.RTree#all
      * @since 3.0.0
      *
-     * @return {Array} An array containing all items currently stored in the tree.
+     * @return {any[]} An array containing all items currently stored in the tree.
      */
     all: function ()
     {
@@ -62,7 +62,7 @@ rbush.prototype = {
      *
      * @param {Object} bbox - The bounding box to search within. Must have `minX`, `minY`, `maxX`, and `maxY` properties.
      *
-     * @return {Array} An array of all items in the tree that intersect with the given bounding box.
+     * @return {any[]} An array of all items in the tree that intersect with the given bounding box.
      */
     search: function (bbox)
     {
@@ -143,7 +143,7 @@ rbush.prototype = {
      * @method Phaser.Structs.RTree#load
      * @since 3.0.0
      *
-     * @param {Array} data - An array of items to insert. Each item must have `left`, `top`, `right`, and `bottom` properties.
+     * @param {any[]} data - An array of items to insert. Each item must have `left`, `top`, `right`, and `bottom` properties.
      *
      * @return {Phaser.Structs.RTree} This RTree instance, for chaining.
      */
