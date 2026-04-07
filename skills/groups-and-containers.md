@@ -40,7 +40,7 @@ fgLayer.add(this.add.sprite(400, 300, 'player'));
 | **Physics** | Via physics.add.group() | Limited (offsets if not at 0,0) | No |
 | **Input** | No (children can) | Yes (needs hit area shape) | No |
 | **Object pooling** | Yes (getFirstDead, kill) | No | No |
-| **Masks** | No | Yes (not per-child) | Yes |
+| **Masks** | No | Yes (not per-child in Canvas) | Yes |
 | **Alpha/blend/visible** | No (batch via setVisible) | Yes | Yes |
 | **Nesting** | N/A | Container in Container | Cannot go in Container |
 | **Extends** | EventEmitter | GameObject | List |
@@ -324,7 +324,7 @@ Cannot be added to a Container. Containers can be added to Layers.
 
 5. **Physics + Container is problematic.** If a Container is not at (0,0), physics bodies on children will be offset. Avoid physics bodies on Container children.
 
-6. **Container children cannot be individually masked.** Only the Container itself can have a mask. Masks do not stack for nested Containers.
+6. **Container children cannot be individually masked in Canvas rendering.** Only the Container itself can have a mask. Masks do not stack for nested Containers. Masks do stack in WebGL rendering.
 
 7. **Group.get() vs Group.getFirst() differ.** `get(x, y)` is shorthand for `getFirst(false, true, x, y)` -- finds first *inactive* member and creates if none found. `getFirst(state)` defaults to `active===false` without auto-creating.
 

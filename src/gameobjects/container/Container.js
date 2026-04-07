@@ -40,8 +40,10 @@ var tempTransformMatrix = new Components.TransformMatrix();
  *
  * Containers can include other Containers for deeply nested transforms.
  *
- * Containers can have masks set on them and can be used as a mask too. However, Container children cannot be masked.
- * The masks do not 'stack up'. Only a Container on the root of the display list will use its mask.
+ * Containers can have masks set on them and can be used as a mask too.
+ * Because masks are filters, the container's children can also have masks,
+ * and the Container's mask will be applied over the top.
+ * In Canvas rendering, only the Container's mask will be applied.
  *
  * Containers can be enabled for input. Because they do not have a texture you need to provide a shape for them
  * to use as their hit area. Container children can also be enabled for input, independent of the Container.
