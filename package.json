@@ -12,6 +12,15 @@
   "types": "./types/phaser.d.ts",
   "browser": "./dist/phaser.js",
   "module": "./dist/phaser.esm.js",
+  "exports": {
+    ".": {
+      "types": "./types/phaser.d.ts",
+      "import": "./dist/phaser.esm.js",
+      "require": "./dist/phaser.js",
+      "default": "./dist/phaser.esm.js"
+    },
+    "./package.json": "./package.json"
+  },
   "repository": {
     "type": "git",
     "url": "https://phaserjs@github.com/phaserjs/phaser.git"
