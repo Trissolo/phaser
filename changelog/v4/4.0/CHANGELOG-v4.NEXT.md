@@ -12,3 +12,4 @@
 - Remove duplicate function definition and exposed internal code docs from `RectangleCanvasRenderer`.
 - Fix duplicate texture name resulting from `RenderTexture#saveTexture`. Thanks @UnaiNeuronUp!
 - Fix framebuffers (in filters and DynamicTextures) using mipmaps incorrectly. Now filters do not render with mipmaps. Thanks @Flow!
+- Fix lack of default export in ESM build. Thanks @kibertoad!
